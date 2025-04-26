@@ -1090,10 +1090,9 @@ def notification():
             "last_history_id": push_history_id  # Update stored history ID.
         }
         update_resp = supabase.table("users").update(update_data).eq("email", email_address).execute()
-        logger.info("Supabase update returned data=%s count=%s error=%s",
+        logger.info("Supabase update returned data=%s count=%s",
             update_resp.data,
-            getattr(update_resp, "count", None),
-            update_resp.error)
+            getattr(update_resp, "count", None))
 
         if update_resp.dict().get("error"):
             logger.error("Failed to update user record for %s: %s", email_address, update_resp.dict().get("error"))
