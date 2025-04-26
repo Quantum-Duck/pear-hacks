@@ -300,6 +300,9 @@ def process_latest_emails():
                 )
                 
                 # Build Claude prompt with standardized JSON formats.
+                # Get user's previous analysis if available
+                previous_analysis = user_data.get("analysis", "No previous analysis available")
+                
                 prompt = (
                     "You are an assistant that analyzes and writes emails mimicking your client.\n"
                     "Previous analysis:\n"
@@ -468,7 +471,8 @@ def process_latest_emails():
                             "content": content
                         })
                         try:
-                            tag_email(email_id, add_labels=["Promotion"], service=None)
+                            service = _get_gmail_service()
+                            tag_email(email_id, add_labels=["Promotion"], service=service)
                         except Exception as tag_err:
                             logger.error("Failed to tag email %s as Promotion: %s", email_id, tag_err)
                         logger.info("Email %s classified as Promotion.", email_id)
@@ -479,21 +483,29 @@ def process_latest_emails():
                             "content": content
                         })
                         try:
-                            tag_email(email_id, add_labels=["Information"], service=None)
+                            service = _get_gmail_service()
+                            tag_email(email_id, add_labels=["Information"], service=service)
                         except Exception as tag_err:
                             logger.error("Failed to tag email %s as Information: %s", email_id, tag_err)
                         logger.info("Email %s classified as Information.", email_id)
                     elif category == "Draft":
                         logger.info("Email %s classified as Draft.", email_id)
-                        if thread_id not in latest_processed_threads and not draft_exists_for_email(None, thread_id):
+                        # Use the Gmail service when checking for existing drafts
+                        service = _get_gmail_service()
+                        if thread_id not in latest_processed_threads and not draft_exists_for_email(service, thread_id):
                             reply_subject = f"Re: {subject}" if not subject.lower().startswith("re:") else subject
-                            draft_response = create_draft_email(
-                                to=from_email,
-                                subject=reply_subject,
-                                body=content.get("draftContent", ""),
-                                service=None,
-                                thread_id=thread_id,
-                            )
+                            try:
+                                draft_response = create_draft_email(
+                                    to=from_email,
+                                    subject=reply_subject,
+                                    body=content.get("draftContent", ""),
+                                    service=service,
+                                    thread_id=thread_id,
+                                )
+                                logger.info("Successfully created draft response for email %s", email_id)
+                            except Exception as draft_err:
+                                logger.error("Failed to create draft for email %s: %s", email_id, draft_err)
+                                continue
                             gmail_draft_id = draft_response.get("id")
                             drafts.append({
                                 "emailId": email_id,
@@ -502,14 +514,15 @@ def process_latest_emails():
                                 "gmailDraftId": gmail_draft_id
                             })
                             try:
-                                tag_email(email_id, add_labels=["To Respond"], service=None)
+                                tag_email(email_id, add_labels=["To Respond"], service=service)
                             except Exception as tag_err:
                                 logger.error("Failed to tag email %s as 'To Respond': %s", email_id, tag_err)
                         else:
                             logger.info("Draft already exists for email %s.", email_id)
                     elif category == "Action Required":
                         try:
-                            tag_email(email_id, add_labels=["Action Required"], service=None)
+                            service = _get_gmail_service()
+                            tag_email(email_id, add_labels=["Action Required"], service=service)
                         except Exception as tag_err:
                             logger.error("Failed to tag email %s as Action Required: %s", email_id, tag_err)
                         logger.info("Email %s classified as Action Required.", email_id)
@@ -520,7 +533,8 @@ def process_latest_emails():
                         })
                     elif category == "Receipts":
                         try:
-                            tag_email(email_id, add_labels=["Receipts"], service=None)
+                            service = _get_gmail_service()
+                            tag_email(email_id, add_labels=["Receipts"], service=service)
                         except Exception as tag_err:
                             logger.error("Failed to tag email %s as Receipts: %s", email_id, tag_err)
                         logger.info("Email %s classified as Receipts.", email_id)
@@ -531,7 +545,8 @@ def process_latest_emails():
                         })
                     elif category == "Meeting Update":
                         try:
-                            tag_email(email_id, add_labels=["Meeting Update"], service=None)
+                            service = _get_gmail_service()
+                            tag_email(email_id, add_labels=["Meeting Update"], service=service)
                         except Exception as tag_err:
                             logger.error("Failed to tag email %s as Meeting Update: %s", email_id, tag_err)
                         logger.info("Email %s classified as Meeting Update.", email_id)
@@ -542,7 +557,8 @@ def process_latest_emails():
                         })
                     elif category == "None":
                         try:
-                            tag_email(email_id, add_labels=["Other"], service=None)
+                            service = _get_gmail_service()
+                            tag_email(email_id, add_labels=["Other"], service=service)
                         except Exception as tag_err:
                             logger.error("Failed to tag email %s as Other: %s", email_id, tag_err)
                         logger.info("Email %s classified as None.", email_id)
@@ -1312,6 +1328,7 @@ def send_all_drafts():
                     "body": body,
                     "to": to_email
                 },
+                "draft": draft.get("draft"),  # Include the original draft content
                 "sent_at": timestamp
             })
             
