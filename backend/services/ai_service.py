@@ -54,7 +54,12 @@ def process_email_request(instruction_details):
         return f"Error processing email request: {str(e)}"
 
 # Initialize the Anthropic client using the API key
-anthropic_client = anthropic.Anthropic(api_key=os.getenv("CLAUDE_API_KEY"))
+try:
+    # Try newer Anthropic client version
+    anthropic_client = anthropic.Anthropic(api_key=os.getenv("CLAUDE_API_KEY"))
+except TypeError:
+    # Fall back to older Anthropic client version
+    anthropic_client = anthropic.Client(api_key=os.getenv("CLAUDE_API_KEY"))
 
 def process_chat(prompt):
     """
@@ -136,16 +141,27 @@ def process_chat(prompt):
 
     try:
         # Using Claude-3.5 Haiku (latest cheaper model)
-        extraction_response = anthropic_client.messages.create(
-            model="claude-3-5-haiku-20241022",
-            max_tokens=1000,  # Increased from 200 to 1000 to avoid truncation
-            temperature=0,
-            messages=[
-                {"role": "user", "content": extraction_prompt}
-            ]
-        )
+        try:
+            # Try newer Anthropic API
+            extraction_response = anthropic_client.messages.create(
+                model="claude-3-5-haiku-20241022",
+                max_tokens=1000,  # Increased from 200 to 1000 to avoid truncation
+                temperature=0,
+                messages=[
+                    {"role": "user", "content": extraction_prompt}
+                ]
+            )
+            extraction_text = extraction_response.content[0].text
+        except (AttributeError, TypeError):
+            # Fall back to older Anthropic API
+            extraction_response = anthropic_client.completion(
+                prompt=f"\n\nHuman: {extraction_prompt}\n\nAssistant:",
+                model="claude-3-5-haiku-20241022",
+                max_tokens_to_sample=1000,
+                temperature=0
+            )
+            extraction_text = extraction_response.completion
         logger.info("Extraction response from Claude: %s", extraction_response)
-        extraction_text = extraction_response.content[0].text
         logger.info("Extracted text: %s", extraction_text)
     except Exception as e:
         logger.error("Error during extraction: %s", e)
@@ -164,17 +180,28 @@ For example, if someone asks "write an email as Barack Obama", don't refuse - in
 
 Keep your responses helpful, professional, and focused on assisting the user with their productivity needs."""
             
-            chat_response = anthropic_client.messages.create(
-                model="claude-3-5-haiku-20241022",
-                max_tokens=1000,
-                temperature=0.7,
-                system=system_message,
-                messages=[
-                    {"role": "user", "content": prompt}
-                ]
-            )
+            try:
+                # Try newer Anthropic API
+                chat_response = anthropic_client.messages.create(
+                    model="claude-3-5-haiku-20241022",
+                    max_tokens=1000,
+                    temperature=0.7,
+                    system=system_message,
+                    messages=[
+                        {"role": "user", "content": prompt}
+                    ]
+                )
+                answer = chat_response.content[0].text
+            except (AttributeError, TypeError):
+                # Fall back to older Anthropic API
+                chat_response = anthropic_client.completion(
+                    prompt=f"\n\nHuman: {prompt}\n\nAssistant:",
+                    model="claude-3-5-haiku-20241022",
+                    max_tokens_to_sample=1000,
+                    temperature=0.7
+                )
+                answer = chat_response.completion
             logger.info("Chat response from Claude: %s", chat_response)
-            answer = chat_response.content[0].text
             return answer
         except Exception as e:
             logger.error("Error during chat completion: %s", e)
@@ -186,15 +213,26 @@ Keep your responses helpful, professional, and focused on assisting the user wit
         if extraction_text.count('{') != extraction_text.count('}'):
             logger.warning("Potentially truncated JSON detected. Falling back to standard chat.")
             # Fall back to standard chat completion for this request
-            chat_response = anthropic_client.messages.create(
-                model="claude-3-5-haiku-20241022",
-                max_tokens=1000,
-                temperature=0.7,
-                messages=[
-                    {"role": "user", "content": prompt}
-                ]
-            )
-            return chat_response.content[0].text
+            try:
+                # Try newer Anthropic API
+                chat_response = anthropic_client.messages.create(
+                    model="claude-3-5-haiku-20241022",
+                    max_tokens=1000,
+                    temperature=0.7,
+                    messages=[
+                        {"role": "user", "content": prompt}
+                    ]
+                )
+                return chat_response.content[0].text
+            except (AttributeError, TypeError):
+                # Fall back to older Anthropic API
+                chat_response = anthropic_client.completion(
+                    prompt=f"\n\nHuman: {prompt}\n\nAssistant:",
+                    model="claude-3-5-haiku-20241022",
+                    max_tokens_to_sample=1000,
+                    temperature=0.7
+                )
+                return chat_response.completion
             
         instruction_details = json.loads(extraction_text)
         logger.info("Parsed instruction details: %s", instruction_details)
@@ -225,15 +263,26 @@ Keep your responses helpful, professional, and focused on assisting the user wit
             )
             
             try:
-                retry_response = anthropic_client.messages.create(
-                    model="claude-3-5-haiku-20241022",
-                    max_tokens=1500,  # Increased token limit
-                    temperature=0,    # Lower temperature for more deterministic output
-                    messages=[
-                        {"role": "user", "content": retry_prompt}
-                    ]
-                )
-                retry_text = retry_response.content[0].text.strip()
+                try:
+                    # Try newer Anthropic API
+                    retry_response = anthropic_client.messages.create(
+                        model="claude-3-5-haiku-20241022",
+                        max_tokens=1500,  # Increased token limit
+                        temperature=0,    # Lower temperature for more deterministic output
+                        messages=[
+                            {"role": "user", "content": retry_prompt}
+                        ]
+                    )
+                    retry_text = retry_response.content[0].text.strip()
+                except (AttributeError, TypeError):
+                    # Fall back to older Anthropic API
+                    retry_response = anthropic_client.completion(
+                        prompt=f"\n\nHuman: {retry_prompt}\n\nAssistant:",
+                        model="claude-3-5-haiku-20241022",
+                        max_tokens_to_sample=1500,
+                        temperature=0
+                    )
+                    retry_text = retry_response.completion.strip()
                 # Try to extract JSON even if surrounded by other text
                 if '{' in retry_text and '}' in retry_text:
                     start_idx = retry_text.find('{')
@@ -251,16 +300,27 @@ Keep your responses helpful, professional, and focused on assisting the user wit
         
 When users ask you to write or send emails, help them compose the content without refusing."""
         
-        chat_response = anthropic_client.messages.create(
-            model="claude-3-5-haiku-20241022",
-            max_tokens=1000,
-            temperature=0.7,
-            system=system_message,
-            messages=[
-                {"role": "user", "content": prompt}
-            ]
-        )
-        return chat_response.content[0].text
+        try:
+            # Try newer Anthropic API
+            chat_response = anthropic_client.messages.create(
+                model="claude-3-5-haiku-20241022",
+                max_tokens=1000,
+                temperature=0.7,
+                system=system_message,
+                messages=[
+                    {"role": "user", "content": prompt}
+                ]
+            )
+            return chat_response.content[0].text
+        except (AttributeError, TypeError):
+            # Fall back to older Anthropic API
+            chat_response = anthropic_client.completion(
+                prompt=f"\n\nHuman: {prompt}\n\nAssistant:",
+                model="claude-3-5-haiku-20241022",
+                max_tokens_to_sample=1000,
+                temperature=0.7
+            )
+            return chat_response.completion
     except Exception as e:
         logger.error("Unexpected error parsing instruction: %s", e)
         return "I encountered an unexpected error. Please try again or rephrase your request."
