@@ -55,11 +55,23 @@ def process_email_request(instruction_details):
 
 # Initialize the Anthropic client using the API key
 try:
-    # Try newer Anthropic client version
-    anthropic_client = anthropic.Anthropic(api_key=os.getenv("CLAUDE_API_KEY"))
-except TypeError:
-    # Fall back to older Anthropic client version
-    anthropic_client = anthropic.Client(api_key=os.getenv("CLAUDE_API_KEY"))
+    # Initialize with error handling
+    api_key = os.getenv("CLAUDE_API_KEY")
+    if not api_key:
+        logger.error("CLAUDE_API_KEY environment variable not found")
+        raise ValueError("Missing CLAUDE_API_KEY")
+        
+    anthropic_client = anthropic.Anthropic(api_key=api_key)
+    logger.info("Initialized anthropic client successfully")
+except Exception as e:
+    logger.error(f"Failed to initialize anthropic client: {str(e)}")
+    # Try older API as fallback
+    try:
+        anthropic_client = anthropic.Client(api_key=os.getenv("CLAUDE_API_KEY"))
+        logger.info("Initialized anthropic client using legacy API")
+    except Exception as e2:
+        logger.error(f"Failed to initialize anthropic client with legacy API: {str(e2)}")
+        raise
 
 def process_chat(prompt):
     """

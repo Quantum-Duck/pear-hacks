@@ -414,9 +414,9 @@ def process_latest_emails():
                     '}\n'
                     "Description: Use this classification when the email does not clearly fit into any of the above categories. "
                     "Simply provide a brief summary of the email content.\n\n"
-                    "Analyze the following email and return a JSON object in the above format. The email is as follows:\n"
+                    "Analyze the following email and return ONLY a valid JSON object in the above format with no explanations or additional text.\n"
                     "Email:\n" + email_context +
-                    "\nYour analysis (valid JSON):"
+                    "\nRETURN ONLY JSON:"
                 )
 
                 logger.debug("Claude prompt for email %s: %s", email_id, prompt)
@@ -430,16 +430,26 @@ def process_latest_emails():
                     temperature=0.7,
                 )
                 result_text = response.content[0].text.strip()
-                if result_text.startswith("```"):
-                    lines = result_text.splitlines()
-                    if lines[0].strip().startswith("```"):
-                        lines = lines[1:]
-                    if lines and lines[-1].strip().startswith("```"):
-                        lines = lines[:-1]
-                    result_text = "\n".join(lines).strip()
                 logger.debug("Claude response for email %s: %s", email_id, result_text)
                 
+                # More robust JSON extraction
                 try:
+                    # First, try to find JSON content between backticks
+                    if "```json" in result_text or "```" in result_text:
+                        # Extract content between backticks
+                        start_idx = result_text.find("```")
+                        if start_idx != -1:
+                            start_idx = result_text.find("\n", start_idx) + 1
+                            end_idx = result_text.find("```", start_idx)
+                            if end_idx != -1:
+                                result_text = result_text[start_idx:end_idx].strip()
+                    
+                    # Find JSON object pattern
+                    if "{" in result_text and "}" in result_text:
+                        json_start = result_text.find("{")
+                        json_end = result_text.rfind("}") + 1
+                        result_text = result_text[json_start:json_end]
+                    
                     classification_result = json.loads(result_text)
                 except Exception as parse_error:
                     logger.error("Failed to parse Claude response for email %s: %s", email_id, parse_error, exc_info=True)
@@ -602,7 +612,7 @@ def watch_emails():
         watch_request = {
             "labelIds": ["INBOX"],
             "labelFilterBehavior": "include",
-            "topicName": "projects/emailer-454707/topics/emailer"  # Replace with your actual Pub/Sub topic.
+            "topicName": "projects/emailer-454707/topics/pear"
         }
         response = service.users().watch(userId="me", body=watch_request).execute()
         
@@ -892,9 +902,9 @@ def notification():
                         '}\n'
                         "Description: Use this classification when the email does not clearly fit into any of the above categories. "
                         "Simply provide a brief summary of the email content.\n\n"
-                        "Analyze the following email and return a JSON object in the above format. The email is as follows:\n"
+                        "Analyze the following email and return ONLY a valid JSON object in the above format with no explanations or additional text.\n"
                         "Email:\n" + email_context +
-                        "\nYour analysis (valid JSON):"
+                        "\nRETURN ONLY JSON:"
                     )
 
                     logger.debug("Claude prompt for email %s: %s", email_id, prompt)
@@ -906,15 +916,26 @@ def notification():
                         temperature=0.7,
                     )
                     result_text = response.content[0].text.strip()
-                    if result_text.startswith("```"):
-                        lines = result_text.splitlines()
-                        if lines[0].strip().startswith("```"):
-                            lines = lines[1:]
-                        if lines and lines[-1].strip().startswith("```"):
-                            lines = lines[:-1]
-                        result_text = "\n".join(lines).strip()
                     logger.debug("Claude response for email %s: %s", email_id, result_text)
+                    
+                    # More robust JSON extraction
                     try:
+                        # First, try to find JSON content between backticks
+                        if "```json" in result_text or "```" in result_text:
+                            # Extract content between backticks
+                            start_idx = result_text.find("```")
+                            if start_idx != -1:
+                                start_idx = result_text.find("\n", start_idx) + 1
+                                end_idx = result_text.find("```", start_idx)
+                                if end_idx != -1:
+                                    result_text = result_text[start_idx:end_idx].strip()
+                        
+                        # Find JSON object pattern
+                        if "{" in result_text and "}" in result_text:
+                            json_start = result_text.find("{")
+                            json_end = result_text.rfind("}") + 1
+                            result_text = result_text[json_start:json_end]
+                        
                         classification_result = json.loads(result_text)
                     except Exception as parse_error:
                         logger.error("Failed to parse Claude response for email %s: %s", email_id, parse_error, exc_info=True)
