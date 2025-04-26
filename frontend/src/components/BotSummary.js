@@ -172,6 +172,8 @@ const BotSummary = () => {
   const [receipts, setReceipts] = useState([]);
   const [meetingUpdates, setMeetingUpdates] = useState([]);
   const [others, setOthers] = useState([]);
+  const [sentEmails, setSentEmails] = useState([]);
+  const [activeTab, setActiveTab] = useState('drafts');
 
   // activeCategory = null => all sections show only the header.
   // Otherwise, the active section is expanded.
@@ -189,7 +191,7 @@ const BotSummary = () => {
       const { data, error } = await supabase
         .from('users')
         .select(
-          'drafts, information, promotions, action_required, receipts, meeting_updates, others'
+          'drafts, information, promotions, action_required, receipts, meeting_updates, others, sent_emails'
         )
         .eq('email', user.email)
         .single();
@@ -203,6 +205,7 @@ const BotSummary = () => {
         setReceipts(data?.receipts || []);
         setMeetingUpdates(data?.meeting_updates || []);
         setOthers(data?.others || []);
+        setSentEmails(data?.sent_emails || []);
       }
     }
   };
@@ -253,8 +256,26 @@ const BotSummary = () => {
       else if (type === "receipts") setReceipts([]);
       else if (type === "meeting_updates") setMeetingUpdates([]);
       else if (type === "other") setOthers([]);
+      else if (type === "sent_emails") setSentEmails([]);
     } catch (error) {
       console.error("Error in handleReadAll:", error);
+    }
+  };
+  
+  // Send all drafts function
+  const handleSendAllDrafts = async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/emails/send_all_drafts`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+      });
+      if (!response.ok) throw new Error("Failed to send all drafts");
+      
+      // Refresh data after sending all drafts
+      fetchUserData();
+    } catch (error) {
+      console.error("Error in handleSendAllDrafts:", error);
     }
   };
 
@@ -301,6 +322,7 @@ const BotSummary = () => {
   // Pie chart data.
   const chartData = [
     { name: 'Drafts', value: drafts.length },
+    { name: 'Sent Emails', value: sentEmails.length },
     { name: 'Info', value: infoItems.length },
     { name: 'Promotions', value: promotions.length },
     { name: 'Action Required', value: actionRequired.length },
@@ -308,7 +330,7 @@ const BotSummary = () => {
     { name: 'Meeting Updates', value: meetingUpdates.length },
     { name: 'Other', value: others.length },
   ];
-  const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#AA336A', '#33AAFF', '#66CC66'];
+  const COLORS = ['#0088FE', '#A685E2', '#00C49F', '#FFBB28', '#FF8042', '#AA336A', '#33AAFF', '#66CC66'];
 
   // Scroll to a section if the user clicks a pie slice.
   const handlePieClick = (data) => {
@@ -316,6 +338,7 @@ const BotSummary = () => {
       const name = data.payload.name;
       const categoryIdMap = {
         'Drafts': 'drafts',
+        'Sent Emails': 'drafts',  // Use the same section but switch tab
         'Info': 'infoItems',
         'Promotions': 'promotions',
         'Action Required': 'actionRequired',
@@ -323,6 +346,13 @@ const BotSummary = () => {
         'Meeting Updates': 'meetingUpdates',
         'Other': 'others',
       };
+      
+      // Set the active tab to Sent Emails if clicked
+      if (name === 'Sent Emails') {
+        setActiveTab('sent');
+      } else if (name === 'Drafts') {
+        setActiveTab('drafts');
+      }
       const sectionId = categoryIdMap[name];
       if (sectionId) {
         const element = document.getElementById(sectionId);
@@ -338,12 +368,12 @@ const BotSummary = () => {
     {
       id: "drafts",
       title: "Drafts",
-      items: drafts,
-      type: "draft",
+      items: activeTab === 'drafts' ? drafts : sentEmails,
+      type: activeTab === 'drafts' ? "draft" : "sent_emails",
       primaryRender: (item) => {
         const subject = item.draft?.replySubject;
         const sender = renderSender(item);
-        return subject ? `Draft: ${subject} - ${sender}` : sender;
+        return subject ? `${activeTab === 'drafts' ? 'Draft' : 'Sent'}: ${subject} - ${sender}` : sender;
       },
       secondaryRender: (item) =>
         item.draft?.draftContent || "No draft content provided",
@@ -456,6 +486,12 @@ const BotSummary = () => {
               Drafts: <span className="tw-ml-2 tw-font-semibold tw-text-primary">{drafts.length}</span>
             </p>
             <p className="tw-flex tw-items-center">
+              <span className="tw-w-8 tw-h-8 tw-flex tw-items-center tw-justify-center tw-bg-pastel-purple tw-rounded-full tw-mr-2">
+                📨
+              </span>
+              Sent Emails: <span className="tw-ml-2 tw-font-semibold tw-text-secondary">{sentEmails.length}</span>
+            </p>
+            <p className="tw-flex tw-items-center">
               <span className="tw-w-8 tw-h-8 tw-flex tw-items-center tw-justify-center tw-bg-pastel-green tw-rounded-full tw-mr-2">
                 📚
               </span>
@@ -531,20 +567,66 @@ const BotSummary = () => {
               key={section.id}
               collapse={isCollapsed(section.id)}
             >
-              <EmailTypeSection
-                id={section.id}
-                title={section.title}
-                items={section.items}
-                type={section.type}
-                isActive={isActive(section.id)}
-                onToggle={() =>
-                  setActiveCategory(isActive(section.id) ? null : section.id)
-                }
-                primaryRender={section.primaryRender}
-                secondaryRender={section.secondaryRender}
-                handleReadAll={handleReadAll}
-                renderList={renderList}
-              />
+              {section.id === "drafts" ? (
+                <>
+                  <div className="tw-flex tw-mb-2">
+                    <button
+                      className={`tw-px-4 tw-py-2 tw-rounded-l-lg tw-border ${activeTab === 'drafts' ? 'tw-bg-primary tw-text-white' : 'tw-bg-white tw-text-primary tw-border-primary'} tw-transition-all tw-duration-300`}
+                      onClick={() => setActiveTab('drafts')}
+                    >
+                      Drafts
+                    </button>
+                    <button
+                      className={`tw-px-4 tw-py-2 tw-rounded-r-lg tw-border ${activeTab === 'sent' ? 'tw-bg-primary tw-text-white' : 'tw-bg-white tw-text-primary tw-border-primary'} tw-transition-all tw-duration-300`}
+                      onClick={() => setActiveTab('sent')}
+                    >
+                      Sent Emails
+                    </button>
+                  </div>
+                  <EmailTypeSection
+                    id={section.id}
+                    title={activeTab === 'drafts' ? "Drafts" : "Sent Emails"}
+                    items={section.items}
+                    type={section.type}
+                    isActive={isActive(section.id)}
+                    onToggle={() =>
+                      setActiveCategory(isActive(section.id) ? null : section.id)
+                    }
+                    primaryRender={section.primaryRender}
+                    secondaryRender={section.secondaryRender}
+                    handleReadAll={handleReadAll}
+                    renderList={renderList}
+                  />
+                  {activeTab === 'drafts' && drafts.length > 0 && (
+                    <div className="tw-mt-2 tw-flex tw-justify-center">
+                      <button
+                        className="tw-bg-primary tw-text-white tw-rounded-lg tw-py-2 tw-px-4 tw-flex tw-items-center tw-shadow-button hover:tw-bg-opacity-90 tw-transition-all tw-duration-300"
+                        onClick={handleSendAllDrafts}
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="tw-h-5 tw-w-5 tw-mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 10l7-7m0 0l7 7m-7-7v18" />
+                        </svg>
+                        Send All Drafts
+                      </button>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <EmailTypeSection
+                  id={section.id}
+                  title={section.title}
+                  items={section.items}
+                  type={section.type}
+                  isActive={isActive(section.id)}
+                  onToggle={() =>
+                    setActiveCategory(isActive(section.id) ? null : section.id)
+                  }
+                  primaryRender={section.primaryRender}
+                  secondaryRender={section.secondaryRender}
+                  handleReadAll={handleReadAll}
+                  renderList={renderList}
+                />
+              )}
             </SectionWrapper>
           ))}
         </div>

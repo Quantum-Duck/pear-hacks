@@ -1237,13 +1237,126 @@ def clean_promotional_emails(user_email, promotions_list):
     logger.info("Promotions updated for user %s after cleaning", user_email)
     return {"status": "Cleaned promotional emails", "cleaned_count": len(cleaned_promotions)}
 
+@emails_bp.route("/send_all_drafts", methods=["POST"])
+def send_all_drafts():
+    """
+    Endpoint to send all draft emails and move them to the sent_emails category.
+    """
+    logger.info("POST /api/emails/send_all_drafts called")
+    session_id = request.cookies.get("session_id")
+    if not session_id:
+        return jsonify({"error": "No session id provided"}), 400
+
+    user = get_user_by_session(session_id)
+    if not user:
+        return jsonify({"error": "User not found"}), 400
+
+    user_email = user.get("email")
+    user_record = supabase.table("users").select("*").eq("email", user_email).single().execute()
+    if not user_record.data:
+        return jsonify({"error": "User record not found"}), 400
+
+    # Get draft emails from user record
+    drafts = user_record.data.get("drafts") or []
+    if not drafts:
+        return jsonify({"status": "No drafts to send"}), 200
+
+    # Get sent_emails from user record (or initialize if not exists)
+    sent_emails = user_record.data.get("sent_emails") or []
+    
+    # Track success and failures
+    successful_sends = []
+    failed_sends = []
+    
+    for draft in drafts:
+        try:
+            # Extract draft information
+            to_email = draft.get("sender", {}).get("name", "")
+            # Use the email from the "from" field if available, otherwise use name
+            if "<" in to_email and ">" in to_email:
+                to_email = to_email[to_email.find("<")+1:to_email.find(">")]
+                
+            subject = draft.get("draft", {}).get("replySubject", "Re: No Subject")
+            body = draft.get("draft", {}).get("draftContent", "")
+            gmail_draft_id = draft.get("gmailDraftId")
+            
+            if not to_email or not body:
+                logger.error(f"Invalid draft data for emailId: {draft.get('emailId')}")
+                failed_sends.append({
+                    "emailId": draft.get("emailId"),
+                    "error": "Missing recipient or body content"
+                })
+                continue
+                
+            # Send the email
+            result = send_email(to_email, subject, body)
+            
+            # If we get here, the email was sent successfully
+            if gmail_draft_id:
+                try:
+                    # Delete the Gmail draft
+                    from services.gmail_service import delete_draft
+                    delete_draft(gmail_draft_id)
+                except Exception as e:
+                    logger.error(f"Failed to delete draft ID {gmail_draft_id}: {str(e)}")
+            
+            # Format timestamp
+            timestamp = datetime.datetime.now().isoformat()
+            
+            # Add to sent emails
+            sent_emails.append({
+                "emailId": draft.get("emailId"),
+                "sender": draft.get("sender"),
+                "content": {
+                    "subject": subject,
+                    "body": body,
+                    "to": to_email
+                },
+                "sent_at": timestamp
+            })
+            
+            successful_sends.append({
+                "emailId": draft.get("emailId"),
+                "to": to_email,
+                "subject": subject
+            })
+            
+        except Exception as e:
+            logger.error(f"Error sending draft for emailId {draft.get('emailId')}: {str(e)}")
+            failed_sends.append({
+                "emailId": draft.get("emailId"),
+                "error": str(e)
+            })
+    
+    # Update the user record
+    update_data = {
+        "drafts": [], # Clear the drafts
+        "sent_emails": sent_emails  # Update the sent emails
+    }
+    
+    update_resp = supabase.table("users").update(update_data).eq("email", user_email).execute()
+    if update_resp.dict().get("error"):
+        logger.error(f"Failed to update user record for {user_email}: {update_resp.dict().get('error')}")
+        return jsonify({
+            "status": "partial_success",
+            "message": "Emails sent but user record update failed",
+            "sent": successful_sends,
+            "failed": failed_sends
+        }), 200
+    
+    return jsonify({
+        "status": "success",
+        "sent": successful_sends,
+        "failed": failed_sends
+    }), 200
+
 @emails_bp.route("/read_all", methods=["POST"])
 def read_all_emails():
     """
     Endpoint to mark all emails of a given category as read.
     For this example, we simulate marking as read by clearing the emails of that type from the user record.
     Expects a JSON payload with:
-      - type: one of "draft", "info", "promotion", "action_required", "receipts", "meeting_updates", "other"
+      - type: one of "draft", "info", "promotion", "action_required", "receipts", "meeting_updates", "other", "sent_emails"
     """
     data = request.get_json()
     email_type = data.get("type")
@@ -1279,6 +1392,8 @@ def read_all_emails():
         updated_field["meeting_updates"] = []
     elif email_type == "other":
         updated_field["others"] = []
+    elif email_type == "sent_emails":
+        updated_field["sent_emails"] = []
     else:
         return jsonify({"error": "Invalid email type"}), 400
 
