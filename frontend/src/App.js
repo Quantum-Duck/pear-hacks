@@ -1,6 +1,6 @@
 // src/App.js
 import React, { useState, useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import EmailList from './components/EmailList';
 import EmailDetail from './components/EmailDetail';
 import CalendarView from './components/CalendarView';
@@ -13,7 +13,6 @@ import TailwindLogin from './components/TailwindLogin';
 import { supabase } from './supabaseClient';
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
-const FRONTEND_URL = process.env.REACT_APP_FRONTEND_URL || 'http://localhost:3000';
 
 function MainApp({ handleLogout, emailCache, setEmailCache }) {
   const [openDrawer, setOpenDrawer] = useState(true);
@@ -32,9 +31,11 @@ function MainApp({ handleLogout, emailCache, setEmailCache }) {
 
       <SideBar open={openDrawer} toggleDrawer={toggleDrawer} />
 
-      <div className={`tw-transition-all tw-duration-500 tw-ease-in-out ${
-        openDrawer ? "tw-ml-64" : "tw-ml-0"
-      } tw-p-6 tw-mt-16 tw-min-h-[calc(100vh-64px)]`}>
+      <div
+        className={`tw-transition-all tw-duration-500 tw-ease-in-out ${
+          openDrawer ? 'tw-ml-64' : 'tw-ml-0'
+        } tw-p-6 tw-mt-16 tw-min-h-[calc(100vh-64px)]`}
+      >
         <div className="tw-bg-white tw-rounded-2xl tw-p-6 tw-shadow-soft tw-min-h-[calc(100vh-120px)] tw-max-w-[1400px] tw-mx-auto">
           <Routes>
             <Route
@@ -45,18 +46,24 @@ function MainApp({ handleLogout, emailCache, setEmailCache }) {
             <Route path="/calendar" element={<CalendarView />} />
             <Route path="/drafts" element={<WrittenDrafts />} />
             <Route path="/bot-summary" element={<BotSummary />} />
-            <Route 
-              path="/settings" 
+            <Route
+              path="/settings"
               element={
                 <div className="tw-flex tw-flex-col tw-items-center tw-justify-center tw-h-[70vh] tw-text-center">
                   <div className="tw-h-24 tw-w-24 tw-bg-pastel-yellow tw-rounded-full tw-flex tw-items-center tw-justify-center tw-mb-4">
                     <span className="tw-text-4xl">⚙️</span>
                   </div>
-                  <h2 className="tw-text-2xl tw-font-bold tw-text-dark tw-mb-2">Settings Page</h2>
-                  <p className="tw-text-gray-600">This is a placeholder for the settings page.</p>
+                  <h2 className="tw-text-2xl tw-font-bold tw-text-dark tw-mb-2">
+                    Settings Page
+                  </h2>
+                  <p className="tw-text-gray-600">
+                    This is a placeholder for the settings page.
+                  </p>
                 </div>
-              } 
+              }
             />
+            {/* Catch-all: redirect unknown routes back to "/" */}
+            <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </div>
       </div>
@@ -85,8 +92,10 @@ function App() {
               body: JSON.stringify({
                 access_token: session.provider_token,
                 refresh_token: session.provider_refresh_token,
-                scope: session.provider_token_details ? session.provider_token_details.scope : null,
-                id_token: session.provider_token_details ? session.provider_token_details.id_token : null,
+                scope:
+                  session.provider_token_details?.scope ?? null,
+                id_token:
+                  session.provider_token_details?.id_token ?? null,
                 email: session.user.email,
               }),
               credentials: 'include',
@@ -100,10 +109,11 @@ function App() {
 
     getSession();
 
-    const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
-      if (session) setUser({ email: session.user.email });
-      else setUser(null);
-    });
+    const { data: authListener } =
+      supabase.auth.onAuthStateChange((event, session) => {
+        if (session) setUser({ email: session.user.email });
+        else setUser(null);
+      });
 
     return () => authListener.subscription.unsubscribe();
   }, []);

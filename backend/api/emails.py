@@ -1386,6 +1386,7 @@ def send_all_drafts():
 
 
 
+
 @emails_bp.route("/read_all", methods=["POST"])
 def read_all_emails():
     """
