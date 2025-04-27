@@ -280,7 +280,7 @@ function ChatSidebar({ isOpen, toggleChatSidebar }) {
               <div className="tw-h-8 tw-w-8 tw-bg-pastel-purple tw-rounded-full tw-flex tw-items-center tw-justify-center tw-mr-2">
                 <span className="tw-text-lg">🤖</span>
               </div>
-              <h2 className="tw-text-lg tw-font-semibold tw-text-primary">Pear Assistant</h2>
+              <h2 className="tw-text-lg tw-font-semibold tw-text-primary">Pearrot Assistant</h2>
             </div>
             <button
               onClick={toggleChatSidebar}
@@ -311,7 +311,7 @@ function ChatSidebar({ isOpen, toggleChatSidebar }) {
                   }
                 >
                   <div className="tw-font-medium tw-mb-1 tw-text-xs tw-text-gray-600">
-                    {msg.sender === 'User' ? 'You' : '🍐 Pear Assistant'}
+                    {msg.sender === 'User' ? 'You' : '🍐 Pearrot Assistant'}
                   </div>
                   <div className="tw-break-words tw-whitespace-pre-wrap tw-text-dark">
                     {msg.text && typeof msg.text === 'string' 

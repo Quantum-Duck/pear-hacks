@@ -106,7 +106,7 @@ const TailwindLogin = () => {
           <div className="tw-h-[45px] tw-w-[45px] tw-rounded-full tw-bg-pastel-green tw-flex tw-items-center tw-justify-center">
             <img src={logo} alt="logo" className="tw-object tw-h-8 tw-w-8" />
           </div>
-          <span className="tw-font-bold tw-text-xl tw-bg-gradient-to-r tw-from-primary tw-to-secondary tw-bg-clip-text tw-text-transparent">Pear Hacks</span>
+          <span className="tw-font-bold tw-text-xl tw-bg-gradient-to-r tw-from-primary tw-to-secondary tw-bg-clip-text tw-text-transparent">Pearrot</span>
         </a>
         {/* Navigation links and "Get started" button inline */}
         <div id="collapsed-header-items" className="collapsible-header animated-collapse tw-flex tw-h-full tw-w-full tw-items-center tw-justify-end tw-gap-5">
@@ -656,7 +656,7 @@ const TailwindLogin = () => {
             <div className="tw-h-12 tw-w-12 tw-bg-pastel-green tw-rounded-full tw-flex tw-items-center tw-justify-center">
               <img src={logo} alt="logo" className="tw-h-8 tw-w-8" />
             </div>
-            <span className="tw-font-bold tw-text-xl tw-bg-gradient-to-r tw-from-primary tw-to-secondary tw-bg-clip-text tw-text-transparent">Pear Hacks</span>
+            <span className="tw-font-bold tw-text-xl tw-bg-gradient-to-r tw-from-primary tw-to-secondary tw-bg-clip-text tw-text-transparent">Pearrot Hacks</span>
           </div>
           
           <div className="tw-text-dark max-md:tw-text-center">

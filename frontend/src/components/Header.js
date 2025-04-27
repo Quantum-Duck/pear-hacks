@@ -50,7 +50,7 @@ const Header = ({ toggleDrawer, toggleChatSidebar, handleLogout }) => {
           
           <Link to="/" className="tw-flex tw-items-center tw-gap-2">
             <div className="tw-text-2xl tw-font-bold tw-bg-gradient-to-r tw-from-primary tw-to-secondary tw-bg-clip-text tw-text-transparent">
-              Pear
+              Pearrot
             </div>
             <div className="tw-text-3xl tw-leading-none">🍐</div>
           </Link>
