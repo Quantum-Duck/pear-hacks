@@ -588,11 +588,11 @@ def process_latest_emails():
                 processed_results.append({"emailId": email_id, "error": "Processing error"})
                 continue
 
-        # Trim deduplication lists if needed.
-        if len(latest_processed_emails) > 10:
-            latest_processed_emails = latest_processed_emails[-10:]
-        if len(latest_processed_threads) > 10:
-            latest_processed_threads = latest_processed_threads[-10:]
+        # # Trim deduplication lists if needed.
+        # if len(latest_processed_emails) > 10:
+        #     latest_processed_emails = latest_processed_emails[-10:]
+        # if len(latest_processed_threads) > 10:
+        #     latest_processed_threads = latest_processed_threads[-10:]
 
         update_data = {
             "promotions": promotions,
@@ -1082,10 +1082,10 @@ def notification():
 
 
                     latest_processed_emails.append(email_id)
-                    if len(latest_processed_emails) > 10:
-                        latest_processed_emails = latest_processed_emails[-10:]
-                    if len(latest_processed_threads) > 10:
-                        latest_processed_threads = latest_processed_threads[-10:]
+                    # if len(latest_processed_emails) > 10:
+                    #     latest_processed_emails = latest_processed_emails[-10:]
+                    # if len(latest_processed_threads) > 10:
+                    #     latest_processed_threads = latest_processed_threads[-10:]
                     processed_emails_count += 1
                     new_emails_count += 1
                 except Exception as inner_e:
@@ -1276,12 +1276,13 @@ def clean_promotional_emails(user_email, promotions_list):
 @emails_bp.route("/send_all_drafts", methods=["POST"])
 def send_all_drafts():
     """
-    Endpoint to send all draft emails via the Gmail API and then move them
-    from the user's `drafts` array into the `sent_emails` array in Supabase.
+    Send every Gmail draft listed in the user's `drafts` array, then
+    move each successfully-sent item into the `sent_emails` array
+    in Supabase. 404s from the subsequent delete call are ignored.
     """
     logger.info("POST /api/emails/send_all_drafts called")
 
-    # 1. Verify session
+    # ── 1.  Auth / user record ────────────────────────────────────────────────
     session_id = request.cookies.get("session_id")
     if not session_id:
         return jsonify({"error": "No session id provided"}), 400
@@ -1291,118 +1292,98 @@ def send_all_drafts():
         return jsonify({"error": "User not found"}), 400
 
     user_email = user.get("email")
-
-    # 2. Fetch the user's Supabase record
-    user_record = supabase.table("users") \
-                          .select("*") \
-                          .eq("email", user_email) \
-                          .single() \
-                          .execute()
-    if not user_record.data:
+    rec_resp = supabase.table("users").select("*").eq("email", user_email).single().execute()
+    if not rec_resp.data:
         return jsonify({"error": "User record not found"}), 400
 
-    drafts = user_record.data.get("drafts") or []
+    user_data   = rec_resp.data
+    drafts      = user_data.get("drafts") or []
+    sent_emails = user_data.get("sent_emails") or []
+
     if not drafts:
         return jsonify({"status": "No drafts to send"}), 200
 
-    sent_emails = user_record.data.get("sent_emails") or []
-
-    # 3. Initialize Gmail API service for this user
+    # ── 2.  Gmail service for the user ────────────────────────────────────────
     try:
         service = get_gmail_service_for_user(user_email)
     except Exception as e:
-        logger.error("Failed to initialize Gmail service for %s: %s", user_email, e, exc_info=True)
-        return jsonify({"error": "Failed to initialize Gmail service"}), 400
+        logger.error("Gmail auth error for %s: %s", user_email, e, exc_info=True)
+        return jsonify({"error": "Could not authenticate with Gmail"}), 400
 
-    successful_sends = []
-    failed_sends = []
-    remaining_drafts = []
-    updated_sent_emails = sent_emails.copy()
+    # ── 3.  Send every draft ──────────────────────────────────────────────────
+    successful_sends, failed_sends = [], []
+    remaining_drafts               = []
 
-    # 4. Iterate over each draft entry
-    for draft in drafts:
-        email_id = draft.get("emailId")
-        gmail_draft_id = draft.get("gmailDraftId")
+    for d in drafts:
+        email_id       = d.get("emailId")
+        gmail_draft_id = d.get("gmailDraftId")
 
+        # Skip if we do not have a Gmail draft id
         if not gmail_draft_id:
-            logger.warning("Skipping draft %s: missing gmailDraftId", email_id)
-            remaining_drafts.append(draft)
-            failed_sends.append({
-                "emailId": email_id,
-                "error": "Missing Gmail draft ID"
-            })
+            remaining_drafts.append(d)
+            failed_sends.append({"emailId": email_id, "error": "Missing gmailDraftId"})
             continue
 
         try:
-            # 4a. Send the draft
-            sent_message = service.users().drafts() \
-                                  .send(userId="me", body={"id": gmail_draft_id}) \
-                                  .execute()
+            # 3a. send the draft
+            sent_msg = service.users().drafts() \
+                              .send(userId="me", body={"id": gmail_draft_id}) \
+                              .execute()
 
-            # 4b. Clean up the draft from Gmail
-            service.users().drafts() \
-                   .delete(userId="me", id=gmail_draft_id) \
-                   .execute()
-
-            # 4c. Record the sent email
-            sent_at = datetime.datetime.utcnow().isoformat() + "Z"
+            # 3b. record immediately
             sent_record = {
-                "emailId": email_id,
-                "gmailDraftId": gmail_draft_id,
-                "gmailMessageId": sent_message.get("id"),
-                "sentAt": sent_at
+                "emailId":        email_id,
+                "gmailDraftId":   gmail_draft_id,
+                "gmailMessageId": sent_msg.get("id"),
+                "sentAt":         datetime.datetime.utcnow().isoformat() + "Z",
             }
-            updated_sent_emails.append(sent_record)
-            successful_sends.append({
-                "emailId": email_id,
-                "messageId": sent_message.get("id")
-            })
+            sent_emails.append(sent_record)
+            successful_sends.append({"emailId": email_id, "messageId": sent_msg.get("id")})
 
-        except HttpError as http_err:
-            logger.error("Gmail API HttpError sending draft %s: %s", gmail_draft_id, http_err, exc_info=True)
-            remaining_drafts.append(draft)
-            failed_sends.append({
-                "emailId": email_id,
-                "error": str(http_err)
-            })
+            # 3c. attempt to delete the obsolete draft (ignore 404)
+            try:
+                service.users().drafts().delete(userId="me", id=gmail_draft_id).execute()
+            except HttpError as del_err:
+                if del_err.resp.status == 404:
+                    # Draft already auto-deleted by Gmail after send; this is fine.
+                    logger.debug("Draft %s already removed (404 after send).", gmail_draft_id)
+                else:
+                    raise  # re-raise anything other than 404
 
+        except HttpError as api_err:
+            logger.error("Gmail API error for draft %s: %s", gmail_draft_id, api_err, exc_info=True)
+            remaining_drafts.append(d)
+            failed_sends.append({"emailId": email_id, "error": str(api_err)})
         except Exception as err:
-            logger.error("Unexpected error sending draft %s: %s", gmail_draft_id, err, exc_info=True)
-            remaining_drafts.append(draft)
-            failed_sends.append({
-                "emailId": email_id,
-                "error": str(err)
-            })
+            logger.error("Unexpected error for draft %s: %s", gmail_draft_id, err, exc_info=True)
+            remaining_drafts.append(d)
+            failed_sends.append({"emailId": email_id, "error": str(err)})
 
-    # 5. Update Supabase: remove sent drafts, update sent_emails
-    update_data = {
-        "drafts": remaining_drafts,
-        "sent_emails": updated_sent_emails
-    }
-    update_resp = supabase.table("users") \
-                          .update(update_data) \
-                          .eq("email", user_email) \
-                          .execute()
+    # ── 4.  Persist changes to Supabase ───────────────────────────────────────
+    update_resp = supabase.table("users").update(
+        {
+            "drafts":      remaining_drafts,
+            "sent_emails": sent_emails,
+        }
+    ).eq("email", user_email).execute()
 
     if update_resp.dict().get("error"):
-        logger.error(
-            "Failed to update Supabase record for %s: %s",
-            user_email,
-            update_resp.dict().get("error")
-        )
+        logger.error("Supabase update failed for %s: %s",
+                     user_email, update_resp.dict()["error"])
         return jsonify({
             "status": "partial_success",
             "sent": successful_sends,
             "failed": failed_sends,
-            "message": "Drafts sent but failed to update user record"
+            "message": "Drafts sent but Supabase update failed"
         }), 200
 
-    # 6. Return summary of what was sent and what failed
+    # ── 5.  Response ──────────────────────────────────────────────────────────
     return jsonify({
         "status": "success",
-        "sent": successful_sends,
-        "failed": failed_sends
+        "sent":   successful_sends,
+        "failed": failed_sends,
     }), 200
+
 
 
 @emails_bp.route("/read_all", methods=["POST"])
