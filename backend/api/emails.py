@@ -986,13 +986,12 @@ def notification():
                                 logger.error("Failed to tag email %s as Information: %s", email_id, tag_err)
                             logger.info("Email %s classified as Information.", email_id)
                         elif category == "Draft":
-                            logger.info("Email %s classified as Draft.", email_id)
-                            service = _get_gmail_service()
+                            logger.info("Email '%s' classified as Draft.", email_id)
 
-                            # ---------- NEW: look for an existing Gmail draft ----------
+                            # use the already-authenticated `service`
                             gmail_draft_id = get_gmail_draft_id(service, thread_id)
 
-                            if gmail_draft_id is None:            # No draft yet → create one
+                            if gmail_draft_id is None:          # create it if it doesn't exist
                                 reply_subject = (
                                     f"Re: {subject}"
                                     if not subject.lower().startswith("re:")
@@ -1003,33 +1002,25 @@ def notification():
                                         to=from_email,
                                         subject=reply_subject,
                                         body=content.get("draftContent", ""),
-                                        service=service,
+                                        service=service,         # ← keep passing the same service
                                         thread_id=thread_id,
                                     )
                                     gmail_draft_id = draft_resp.get("id")
                                     logger.info(
-                                        "Created new Gmail draft %s for email %s",
-                                        gmail_draft_id,
-                                        email_id,
+                                        "Created Gmail draft %s for email %s", gmail_draft_id, email_id
                                     )
+
                                     tag_email(email_id, add_labels=["To Respond"], service=service)
                                 except Exception as err:
                                     logger.error("Failed to create draft for %s: %s", email_id, err)
-                                    # Still record the classification so the user sees it
-                            else:
-                                logger.info(
-                                    "Draft already exists for thread '%s' (draft id '%s')",
-                                    thread_id,
-                                    gmail_draft_id,
-                                )
 
-                            # ---------- ALWAYS store the draft in Supabase ----------
+                            # always record the draft in Supabase
                             if not any(d.get("emailId") == email_id for d in drafts):
                                 drafts.append(
                                     {
                                         "emailId": email_id,
                                         "sender": sender,
-                                        "draft": content,          # Claude-generated reply subject/body
+                                        "draft": content,
                                         "gmailDraftId": gmail_draft_id,
                                     }
                                 )

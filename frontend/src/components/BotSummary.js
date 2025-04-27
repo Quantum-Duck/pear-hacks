@@ -5,7 +5,9 @@ import { PieChart, Pie, Cell, Tooltip, Legend } from 'recharts';
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
-// Helper to filter promotions with a valid, unexpired date ("mm/dd/yyyy" format).
+// ─────────────────────────────────────────────
+// Helper: filter promotions with a valid date
+// ─────────────────────────────────────────────
 const filterValidPromotions = (promotions) => {
   const currentDate = new Date();
   return promotions.filter((item) => {
@@ -21,21 +23,16 @@ const filterValidPromotions = (promotions) => {
 
 /*
   SectionWrapper:
-  - Measures the "natural" height of its children (header + content).
-  - If collapse=true, it animates height, opacity, and margin-bottom to zero.
-  - If collapse=false, it sets these properties to the measured size so the section
-    takes up exactly as much space as it needs.
+  Animates expand / collapse for each section.
 */
 const SectionWrapper = ({ collapse, children }) => {
   const wrapperRef = useRef(null);
   const [height, setHeight] = useState(0);
 
-  // Measure the content immediately after DOM changes.
   useLayoutEffect(() => {
     if (wrapperRef.current) {
       if (!collapse) {
-        const fullHeight = wrapperRef.current.scrollHeight;
-        setHeight(fullHeight);
+        setHeight(wrapperRef.current.scrollHeight);
       } else {
         setHeight(0);
       }
@@ -52,18 +49,14 @@ const SectionWrapper = ({ collapse, children }) => {
 
   return (
     <div style={style}>
-      <div ref={wrapperRef}>
-        {children}
-      </div>
+      <div ref={wrapperRef}>{children}</div>
     </div>
   );
 };
 
 /*
   EmailTypeSection:
-  - Always renders the section header (title + item count).
-  - If isActive=true, renders the "Back"/"Read All" buttons + email list.
-  - Clicking the header toggles whether this section is active.
+  Header + body for each email category.
 */
 const EmailTypeSection = ({
   id,
@@ -77,40 +70,59 @@ const EmailTypeSection = ({
   handleReadAll,
   renderList,
 }) => {
-  // Get emoji based on section type
   const getEmoji = () => {
     switch (id) {
-      case 'drafts': return '✏️';
-      case 'sentEmails': return '📨';
-      case 'infoItems': return '📚';
-      case 'promotions': return '🎟️';
-      case 'actionRequired': return '⚡';
-      case 'receipts': return '🧾';
-      case 'meetingUpdates': return '📅';
-      case 'others': return '📁';
-      default: return '📄';
+      case 'drafts':
+        return '✏️';
+      case 'sentEmails':
+        return '📨';
+      case 'infoItems':
+        return '📚';
+      case 'promotions':
+        return '🎟️';
+      case 'actionRequired':
+        return '⚡';
+      case 'receipts':
+        return '🧾';
+      case 'meetingUpdates':
+        return '📅';
+      case 'others':
+        return '📁';
+      default:
+        return '📄';
     }
   };
-  
-  // Get background color class based on section type
+
   const getBgColor = () => {
     switch (id) {
-      case 'drafts': return 'tw-bg-pastel-blue tw-bg-opacity-30';
-      case 'sentEmails': return 'tw-bg-pastel-purple tw-bg-opacity-30';
-      case 'infoItems': return 'tw-bg-pastel-green tw-bg-opacity-30';
-      case 'promotions': return 'tw-bg-pastel-yellow tw-bg-opacity-30';
-      case 'actionRequired': return 'tw-bg-pastel-pink tw-bg-opacity-30';
-      case 'receipts': return 'tw-bg-pastel-purple tw-bg-opacity-30';
-      case 'meetingUpdates': return 'tw-bg-pastel-blue tw-bg-opacity-30';
-      case 'others': return 'tw-bg-pastel-green tw-bg-opacity-30';
-      default: return 'tw-bg-pastel-blue tw-bg-opacity-30';
+      case 'drafts':
+        return 'tw-bg-pastel-blue tw-bg-opacity-30';
+      case 'sentEmails':
+        return 'tw-bg-pastel-purple tw-bg-opacity-30';
+      case 'infoItems':
+        return 'tw-bg-pastel-green tw-bg-opacity-30';
+      case 'promotions':
+        return 'tw-bg-pastel-yellow tw-bg-opacity-30';
+      case 'actionRequired':
+        return 'tw-bg-pastel-pink tw-bg-opacity-30';
+      case 'receipts':
+        return 'tw-bg-pastel-purple tw-bg-opacity-30';
+      case 'meetingUpdates':
+        return 'tw-bg-pastel-blue tw-bg-opacity-30';
+      case 'others':
+        return 'tw-bg-pastel-green tw-bg-opacity-30';
+      default:
+        return 'tw-bg-pastel-blue tw-bg-opacity-30';
     }
   };
-  
+
   return (
-    <section id={id} className={`tw-bg-white tw-rounded-2xl tw-shadow-soft tw-overflow-hidden tw-mb-4`}>
+    <section
+      id={id}
+      className="tw-bg-white tw-rounded-2xl tw-shadow-soft tw-overflow-hidden tw-mb-4"
+    >
       {/* Header */}
-      <div 
+      <div
         onClick={onToggle}
         className={`tw-p-4 tw-flex tw-items-center tw-cursor-pointer ${getBgColor()}`}
       >
@@ -119,7 +131,9 @@ const EmailTypeSection = ({
         </div>
         <div>
           <h3 className="tw-text-xl tw-font-semibold tw-text-dark">{title}</h3>
-          <p className="tw-text-sm tw-text-gray-600">{items.length} {items.length === 1 ? 'item' : 'items'}</p>
+          <p className="tw-text-sm tw-text-gray-600">
+            {items.length} {items.length === 1 ? 'item' : 'items'}
+          </p>
         </div>
       </div>
 
@@ -129,25 +143,47 @@ const EmailTypeSection = ({
           <div className="tw-flex tw-space-x-4 tw-mb-6 tw-pt-2">
             <button
               className="tw-flex tw-items-center tw-bg-white tw-border tw-border-secondary tw-text-secondary tw-px-4 tw-py-2 tw-rounded-lg tw-shadow-button hover:tw-bg-secondary hover:tw-text-white tw-transition-all tw-duration-300"
-              onClick={(e) => { 
-                e.stopPropagation(); 
+              onClick={(e) => {
+                e.stopPropagation();
                 onToggle();
               }}
             >
-              <svg xmlns="http://www.w3.org/2000/svg" className="tw-h-4 tw-w-4 tw-mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="tw-h-4 tw-w-4 tw-mr-1"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="M10 19l-7-7m0 0l7-7m-7 7h18"
+                />
               </svg>
               Back
             </button>
             <button
               className="tw-flex tw-items-center tw-bg-white tw-border tw-border-primary tw-text-primary tw-px-4 tw-py-2 tw-rounded-lg tw-shadow-button hover:tw-bg-primary hover:tw-text-white tw-transition-all tw-duration-300"
-              onClick={(e) => { 
+              onClick={(e) => {
                 e.stopPropagation();
                 handleReadAll(type);
               }}
             >
-              <svg xmlns="http://www.w3.org/2000/svg" className="tw-h-4 tw-w-4 tw-mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 19v-8.93a2 2 0 01.89-1.664l7-4.666a2 2 0 012.22 0l7 4.666A2 2 0 0121 10.07V19M3 19a2 2 0 002 2h14a2 2 0 002-2M3 19l6.75-4.5M21 19l-6.75-4.5M3 10l6.75 4.5M21 10l-6.75 4.5m0 0l-1.14.76a2 2 0 01-2.22 0l-1.14-.76" />
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="tw-h-4 tw-w-4 tw-mr-1"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="M3 19v-8.93a2 2 0 01.89-1.664l7-4.666a2 2 0 012.22 0l7 4.666A2 2 0 0121 10.07V19M3 19a2 2 0 002 2h14a2 2 0 002-2M3 19l6.75-4.5M21 19l-6.75-4.5M3 10l6.75 4.5M21 10l-6.75 4.5m0 0l-1.14.76a2 2 0 01-2.22 0l-1.14-.76"
+                />
               </svg>
               Mark All Read
             </button>
@@ -161,11 +197,14 @@ const EmailTypeSection = ({
   );
 };
 
-// Helper to render sender details (simply returns the sender's name).
-const renderSender = (item) => {
-  return item.sender?.name || 'None';
-};
+// ─────────────────────────────────────────────
+// Helper to render sender
+// ─────────────────────────────────────────────
+const renderSender = (item) => item.sender?.name || 'None';
 
+// ─────────────────────────────────────────────
+// BotSummary Component
+// ─────────────────────────────────────────────
 const BotSummary = () => {
   const [drafts, setDrafts] = useState([]);
   const [infoItems, setInfoItems] = useState([]);
@@ -176,18 +215,18 @@ const BotSummary = () => {
   const [others, setOthers] = useState([]);
   const [sentEmails, setSentEmails] = useState([]);
 
-  // activeCategory = null => all sections show only the header.
-  // Otherwise, the active section is expanded.
   const [activeCategory, setActiveCategory] = useState(null);
   const navigate = useNavigate();
 
-  // Load data on mount.
+  // ── Load user data on mount
   useEffect(() => {
     fetchUserData();
   }, []);
 
   const fetchUserData = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
     if (user) {
       const { data, error } = await supabase
         .from('users')
@@ -211,76 +250,88 @@ const BotSummary = () => {
     }
   };
 
-  // Quick remove handler.
+  // ─────────────────────────────────────────
+  // Quick remove handler  (Safety Rails!)
+  // ─────────────────────────────────────────
   const handleQuickRemove = async (type, item) => {
     try {
       const payload = { type, emailId: item.emailId };
-      if (type === "draft") {
+      if (type === 'draft') {
         payload.gmailDraftId = item.gmailDraftId;
       }
       const response = await fetch(`${API_BASE_URL}/api/emails/quick_remove`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify(payload),
       });
-      if (!response.ok) throw new Error("Failed to remove item");
+      if (!response.ok) throw new Error('Failed to remove item');
 
-      // Update local state.
-      if (type === "draft") setDrafts(prev => prev.filter(d => d.emailId !== item.emailId));
-      else if (type === "info") setInfoItems(prev => prev.filter(i => i.emailId !== item.emailId));
-      else if (type === "promotion") setPromotions(prev => prev.filter(p => p.emailId !== item.emailId));
-      else if (type === "action_required") setActionRequired(prev => prev.filter(a => a.emailId !== item.emailId));
-      else if (type === "receipts") setReceipts(prev => prev.filter(r => r.emailId !== item.emailId));
-      else if (type === "meeting_updates") setMeetingUpdates(prev => prev.filter(m => m.emailId !== item.emailId));
-      else if (type === "other") setOthers(prev => prev.filter(o => o.emailId !== item.emailId));
+      // Update local UI state
+      if (type === 'draft')
+        setDrafts((prev) => prev.filter((d) => d.emailId !== item.emailId));
+      else if (type === 'info')
+        setInfoItems((prev) => prev.filter((i) => i.emailId !== item.emailId));
+      else if (type === 'promotion')
+        setPromotions((prev) => prev.filter((p) => p.emailId !== item.emailId));
+      else if (type === 'action_required')
+        setActionRequired((prev) => prev.filter((a) => a.emailId !== item.emailId));
+      else if (type === 'receipts')
+        setReceipts((prev) => prev.filter((r) => r.emailId !== item.emailId));
+      else if (type === 'meeting_updates')
+        setMeetingUpdates((prev) => prev.filter((m) => m.emailId !== item.emailId));
+      else if (type === 'other')
+        setOthers((prev) => prev.filter((o) => o.emailId !== item.emailId));
+      else if (type === 'sent_emails')
+        // NEW safety-rail branch for Sent Emails
+        setSentEmails((prev) => prev.filter((s) => s.emailId !== item.emailId));
     } catch (error) {
-      console.error("Error in quick remove:", error);
+      console.error('Error in quick remove:', error);
     }
   };
 
-  // Mark all as read in a category.
+  // ── Mark-all-read
   const handleReadAll = async (type) => {
     try {
       const response = await fetch(`${API_BASE_URL}/api/emails/read_all`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ type }),
       });
-      if (!response.ok) throw new Error("Failed to mark all as read");
-      // Clear local state.
-      if (type === "draft") setDrafts([]);
-      else if (type === "info") setInfoItems([]);
-      else if (type === "promotion") setPromotions([]);
-      else if (type === "action_required") setActionRequired([]);
-      else if (type === "receipts") setReceipts([]);
-      else if (type === "meeting_updates") setMeetingUpdates([]);
-      else if (type === "other") setOthers([]);
-      else if (type === "sent_emails") setSentEmails([]);
+      if (!response.ok) throw new Error('Failed to mark all as read');
+
+      if (type === 'draft') setDrafts([]);
+      else if (type === 'info') setInfoItems([]);
+      else if (type === 'promotion') setPromotions([]);
+      else if (type === 'action_required') setActionRequired([]);
+      else if (type === 'receipts') setReceipts([]);
+      else if (type === 'meeting_updates') setMeetingUpdates([]);
+      else if (type === 'other') setOthers([]);
+      else if (type === 'sent_emails') setSentEmails([]);
     } catch (error) {
-      console.error("Error in handleReadAll:", error);
-    }
-  };
-  
-  // Send all drafts function
-  const handleSendAllDrafts = async () => {
-    try {
-      const response = await fetch(`${API_BASE_URL}/api/emails/send_all_drafts`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-      });
-      if (!response.ok) throw new Error("Failed to send all drafts");
-      
-      // Refresh data after sending all drafts
-      fetchUserData();
-    } catch (error) {
-      console.error("Error in handleSendAllDrafts:", error);
+      console.error('Error in handleReadAll:', error);
     }
   };
 
-  // Render a list of emails.
+  // ── Send all drafts
+  const handleSendAllDrafts = async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/emails/send_all_drafts`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+      });
+      if (!response.ok) throw new Error('Failed to send all drafts');
+      fetchUserData(); // refresh
+    } catch (error) {
+      console.error('Error in handleSendAllDrafts:', error);
+    }
+  };
+
+  // ─────────────────────────────────────────
+  // List renderer
+  // ─────────────────────────────────────────
   const renderList = (items, type, primaryRender, secondaryRender) => (
     <ul className="tw-space-y-3">
       {items.length === 0 ? (
@@ -297,10 +348,14 @@ const BotSummary = () => {
           >
             <div className="tw-flex tw-justify-between tw-items-start tw-gap-3">
               <div className="tw-flex tw-flex-col tw-flex-grow">
-                <span className="tw-font-semibold tw-text-dark tw-break-words">{primaryRender(item)}</span>
-                <div className="tw-text-gray-600 tw-text-sm tw-mt-1 tw-break-words">{secondaryRender(item)}</div>
+                <span className="tw-font-semibold tw-text-dark tw-break-words">
+                  {primaryRender(item)}
+                </span>
+                <div className="tw-text-gray-600 tw-text-sm tw-mt-1 tw-break-words">
+                  {secondaryRender(item)}
+                </div>
               </div>
-              
+
               <button
                 className="tw-flex tw-items-center tw-bg-white tw-border tw-border-primary tw-text-primary tw-px-3 tw-py-1.5 tw-rounded-lg hover:tw-bg-primary hover:tw-text-white tw-transition-all tw-duration-300 tw-shadow-button tw-flex-shrink-0 tw-whitespace-nowrap tw-text-sm"
                 onClick={(e) => {
@@ -308,8 +363,19 @@ const BotSummary = () => {
                   handleQuickRemove(type, item);
                 }}
               >
-                <svg xmlns="http://www.w3.org/2000/svg" className="tw-h-4 tw-w-4 tw-mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="tw-h-4 tw-w-4 tw-mr-1"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                  />
                 </svg>
                 Remove
               </button>
@@ -320,7 +386,7 @@ const BotSummary = () => {
     </ul>
   );
 
-  // Pie chart data.
+  // Pie chart data
   const chartData = [
     { name: 'Drafts', value: drafts.length },
     { name: 'Sent Emails', value: sentEmails.length },
@@ -331,210 +397,250 @@ const BotSummary = () => {
     { name: 'Meeting Updates', value: meetingUpdates.length },
     { name: 'Other', value: others.length },
   ];
-  const COLORS = ['#0088FE', '#A685E2', '#00C49F', '#FFBB28', '#FF8042', '#AA336A', '#33AAFF', '#66CC66'];
 
-  // Scroll to a section if the user clicks a pie slice.
   const handlePieClick = (data) => {
     if (data && data.payload) {
       const name = data.payload.name;
-      const categoryIdMap = {
-        'Drafts': 'drafts',
+      const map = {
+        Drafts: 'drafts',
         'Sent Emails': 'sentEmails',
-        'Info': 'infoItems',
-        'Promotions': 'promotions',
+        Info: 'infoItems',
+        Promotions: 'promotions',
         'Action Required': 'actionRequired',
-        'Receipts': 'receipts',
+        Receipts: 'receipts',
         'Meeting Updates': 'meetingUpdates',
-        'Other': 'others',
+        Other: 'others',
       };
-      const sectionId = categoryIdMap[name];
+      const sectionId = map[name];
       if (sectionId) {
-        const element = document.getElementById(sectionId);
-        if (element) {
-          element.scrollIntoView({ behavior: 'smooth' });
-        }
+        document.getElementById(sectionId)?.scrollIntoView({ behavior: 'smooth' });
       }
     }
   };
 
-  // Array of all sections.
+  // ── Section definitions
   const sections = [
     {
-      id: "drafts",
-      title: "Drafts",
+      id: 'drafts',
+      title: 'Drafts',
       items: drafts,
-      type: "draft",
+      type: 'draft',
       primaryRender: (item) => {
         const subject = item.draft?.replySubject;
         const sender = renderSender(item);
         return subject ? `Draft: ${subject} - ${sender}` : sender;
       },
       secondaryRender: (item) =>
-        item.draft?.draftContent || "No draft content provided",
+        item.draft?.draftContent || 'No draft content provided',
     },
     {
-      id: "sentEmails",
-      title: "Sent Emails",
+      id: 'sentEmails',
+      title: 'Sent Emails',
       items: sentEmails,
-      type: "sent_emails",
+      type: 'sent_emails',
       primaryRender: (item) => {
         const subject = item.draft?.replySubject || item.content?.subject;
         const sender = renderSender(item);
         return subject ? `Sent: ${subject} - ${sender}` : sender;
       },
       secondaryRender: (item) =>
-        item.draft?.draftContent || item.content?.body || "No content provided",
+        item.draft?.draftContent || item.content?.body || 'No content provided',
     },
     {
-      id: "infoItems",
-      title: "Info Items",
+      id: 'infoItems',
+      title: 'Info Items',
       items: infoItems,
-      type: "info",
-      primaryRender: (item) => renderSender(item),
-      secondaryRender: (item) =>
-        item.content?.summary || "No summary available",
+      type: 'info',
+      primaryRender: renderSender,
+      secondaryRender: (item) => item.content?.summary || 'No summary available',
     },
     {
-      id: "promotions",
-      title: "Promotions",
+      id: 'promotions',
+      title: 'Promotions',
       items: promotions,
-      type: "promotion",
-      primaryRender: (item) => 
-        `${item.content?.title || 'Promotion'}${item.sender?.name ? ' - ' + item.sender.name : ''}`,
+      type: 'promotion',
+      primaryRender: (item) =>
+        `${item.content?.title || 'Promotion'}${
+          item.sender?.name ? ' - ' + item.sender.name : ''
+        }`,
       secondaryRender: (item) => (
         <>
-          <strong>{item.content?.title || "No title"}</strong> — {item.content?.details || "No details"} — <em>{item.content?.expiration || "No expiration"}</em>
+          <strong>{item.content?.title || 'No title'}</strong> —{' '}
+          {item.content?.details || 'No details'} —{' '}
+          <em>{item.content?.expiration || 'No expiration'}</em>
         </>
       ),
     },
     {
-      id: "actionRequired",
-      title: "Action Required",
+      id: 'actionRequired',
+      title: 'Action Required',
       items: actionRequired,
-      type: "action_required",
-      primaryRender: (item) => 
-        `${item.content?.actionPoints || 'Action Required'}${item.sender?.name ? ' - ' + item.sender.name : ''}`,
+      type: 'action_required',
+      primaryRender: (item) =>
+        `${item.content?.actionPoints || 'Action Required'}${
+          item.sender?.name ? ' - ' + item.sender.name : ''
+        }`,
       secondaryRender: (item) => (
         <>
-          <strong>Action Points:</strong> {item.content?.actionPoints || "None"} — <em>{item.content?.summary || "No summary"}</em>
+          <strong>Action Points:</strong>{' '}
+          {item.content?.actionPoints || 'None'} —{' '}
+          <em>{item.content?.summary || 'No summary'}</em>
         </>
       ),
     },
     {
-      id: "receipts",
-      title: "Receipts",
+      id: 'receipts',
+      title: 'Receipts',
       items: receipts,
-      type: "receipts",
-      primaryRender: (item) => 
-        `${item.content?.orderNumber ? 'Order ' + item.content.orderNumber : 'Receipt'}${item.sender?.name ? ' - ' + item.sender.name : ''}`,
+      type: 'receipts',
+      primaryRender: (item) =>
+        `${item.content?.orderNumber ? 'Order ' + item.content.orderNumber : 'Receipt'}${
+          item.sender?.name ? ' - ' + item.sender.name : ''
+        }`,
       secondaryRender: (item) => (
         <>
-          <strong>Order Number:</strong> {item.content?.orderNumber || "None"} — <strong>Total Amount:</strong> {item.content?.totalAmount || "None"} — <em>{item.content?.summary || "No summary"}</em>
+          <strong>Order Number:</strong>{' '}
+          {item.content?.orderNumber || 'None'} — <strong>Total Amount:</strong>{' '}
+          {item.content?.totalAmount || 'None'} —{' '}
+          <em>{item.content?.summary || 'No summary'}</em>
         </>
       ),
     },
     {
-      id: "meetingUpdates",
-      title: "Meeting Updates",
+      id: 'meetingUpdates',
+      title: 'Meeting Updates',
       items: meetingUpdates,
-      type: "meeting_updates",
-      primaryRender: (item) => 
-        `${item.content?.meetingSubject || 'Meeting Update'}${item.sender?.name ? ' - ' + item.sender.name : ''}`,
+      type: 'meeting_updates',
+      primaryRender: (item) =>
+        `${item.content?.meetingSubject || 'Meeting Update'}${
+          item.sender?.name ? ' - ' + item.sender.name : ''
+        }`,
       secondaryRender: (item) => (
         <>
-          <strong>{item.content?.meetingSubject || "No subject"}</strong> — {item.content?.summary || "No summary"}
+          <strong>{item.content?.meetingSubject || 'No subject'}</strong> —{' '}
+          {item.content?.summary || 'No summary'}
         </>
       ),
     },
     {
-      id: "others",
-      title: "Other",
+      id: 'others',
+      title: 'Other',
       items: others,
-      type: "other",
-      primaryRender: (item) => 
-        `${item.content?.summary || 'Other'}${item.sender?.name ? ' - ' + item.sender.name : ''}`,
+      type: 'other',
+      primaryRender: (item) =>
+        `${item.content?.summary || 'Other'}${
+          item.sender?.name ? ' - ' + item.sender.name : ''
+        }`,
       secondaryRender: (item) =>
-        item.content?.summary || "No summary available",
+        item.content?.summary || 'No summary available',
     },
   ];
 
-  // Determine if a section is collapsed.
   const isCollapsed = (sectionId) => {
-    if (activeCategory === null) {
-      return false;
-    }
+    if (activeCategory === null) return false;
     return sectionId !== activeCategory;
   };
 
-  // Determine if a section is active.
   const isActive = (sectionId) => activeCategory === sectionId;
 
   return (
     <div className="tw-min-h-full tw-text-dark">
+      {/* Header */}
       <div className="tw-flex tw-items-center tw-mb-6">
         <div className="tw-h-12 tw-w-12 tw-bg-pastel-purple tw-rounded-full tw-flex tw-items-center tw-justify-center tw-mr-4">
           <span className="tw-text-2xl">📊</span>
         </div>
-        <h1 className="tw-text-3xl tw-font-bold tw-bg-gradient-to-r tw-from-primary tw-to-secondary tw-bg-clip-text tw-text-transparent">Email Summary</h1>
+        <h1 className="tw-text-3xl tw-font-bold tw-bg-gradient-to-r tw-from-primary tw-to-secondary tw-bg-clip-text tw-text-transparent">
+          Email Summary
+        </h1>
       </div>
-      
+
       <div className="tw-grid tw-grid-cols-1 lg:tw-grid-cols-2 tw-gap-8">
-        {/* Overall Summary Section */}
+        {/* Overview + Chart */}
         <div className="tw-bg-white tw-rounded-2xl tw-p-6 tw-shadow-soft">
           <h2 className="tw-text-xl tw-font-semibold tw-mb-4 tw-flex tw-items-center">
             <span className="tw-mr-2">📈</span>
             Overview
           </h2>
+
+          {/* KPI grid */}
           <div className="tw-grid tw-grid-cols-1 md:tw-grid-cols-2 tw-gap-4 tw-mb-6">
+            {/* 8 quick-stats blocks */}
             <p className="tw-flex tw-items-center">
               <span className="tw-w-8 tw-h-8 tw-flex tw-items-center tw-justify-center tw-bg-pastel-blue tw-rounded-full tw-mr-2">
                 ✏️
               </span>
-              Drafts: <span className="tw-ml-2 tw-font-semibold tw-text-primary">{drafts.length}</span>
+              Drafts:{' '}
+              <span className="tw-ml-2 tw-font-semibold tw-text-primary">
+                {drafts.length}
+              </span>
             </p>
             <p className="tw-flex tw-items-center">
               <span className="tw-w-8 tw-h-8 tw-flex tw-items-center tw-justify-center tw-bg-pastel-purple tw-rounded-full tw-mr-2">
                 📨
               </span>
-              Sent Emails: <span className="tw-ml-2 tw-font-semibold tw-text-secondary">{sentEmails.length}</span>
+              Sent Emails:{' '}
+              <span className="tw-ml-2 tw-font-semibold tw-text-secondary">
+                {sentEmails.length}
+              </span>
             </p>
             <p className="tw-flex tw-items-center">
               <span className="tw-w-8 tw-h-8 tw-flex tw-items-center tw-justify-center tw-bg-pastel-green tw-rounded-full tw-mr-2">
                 📚
               </span>
-              Info Items: <span className="tw-ml-2 tw-font-semibold tw-text-secondary">{infoItems.length}</span>
+              Info Items:{' '}
+              <span className="tw-ml-2 tw-font-semibold tw-text-secondary">
+                {infoItems.length}
+              </span>
             </p>
             <p className="tw-flex tw-items-center">
               <span className="tw-w-8 tw-h-8 tw-flex tw-items-center tw-justify-center tw-bg-pastel-yellow tw-rounded-full tw-mr-2">
                 🎟️
               </span>
-              Promotions: <span className="tw-ml-2 tw-font-semibold tw-text-accent">{promotions.length}</span>
+              Promotions:{' '}
+              <span className="tw-ml-2 tw-font-semibold tw-text-accent">
+                {promotions.length}
+              </span>
             </p>
             <p className="tw-flex tw-items-center">
               <span className="tw-w-8 tw-h-8 tw-flex tw-items-center tw-justify-center tw-bg-pastel-pink tw-rounded-full tw-mr-2">
                 ⚡
               </span>
-              Action Required: <span className="tw-ml-2 tw-font-semibold tw-text-primary">{actionRequired.length}</span>
+              Action Required:{' '}
+              <span className="tw-ml-2 tw-font-semibold tw-text-primary">
+                {actionRequired.length}
+              </span>
             </p>
             <p className="tw-flex tw-items-center">
               <span className="tw-w-8 tw-h-8 tw-flex tw-items-center tw-justify-center tw-bg-pastel-purple tw-rounded-full tw-mr-2">
                 🧾
               </span>
-              Receipts: <span className="tw-ml-2 tw-font-semibold tw-text-secondary">{receipts.length}</span>
+              Receipts:{' '}
+              <span className="tw-ml-2 tw-font-semibold tw-text-secondary">
+                {receipts.length}
+              </span>
             </p>
             <p className="tw-flex tw-items-center">
               <span className="tw-w-8 tw-h-8 tw-flex tw-items-center tw-justify-center tw-bg-pastel-blue tw-rounded-full tw-mr-2">
                 📅
               </span>
-              Meeting Updates: <span className="tw-ml-2 tw-font-semibold tw-text-accent">{meetingUpdates.length}</span>
+              Meeting Updates:{' '}
+              <span className="tw-ml-2 tw-font-semibold tw-text-accent">
+                {meetingUpdates.length}
+              </span>
             </p>
             <p className="tw-flex tw-items-center">
               <span className="tw-w-8 tw-h-8 tw-flex tw-items-center tw-justify-center tw-bg-pastel-green tw-rounded-full tw-mr-2">
                 📁
               </span>
-              Other: <span className="tw-ml-2 tw-font-semibold tw-text-primary">{others.length}</span>
+              Other:{' '}
+              <span className="tw-ml-2 tw-font-semibold tw-text-primary">
+                {others.length}
+              </span>
             </p>
           </div>
+
+          {/* Pie chart */}
           <div className="tw-p-4 tw-bg-pastel-blue tw-bg-opacity-20 tw-rounded-xl">
             <PieChart width={400} height={300}>
               <Pie
@@ -547,34 +653,41 @@ const BotSummary = () => {
                 label
                 onClick={handlePieClick}
               >
-                {chartData.map((entry, index) => (
+                {chartData.map((_, index) => (
                   <Cell
                     key={`cell-${index}`}
-                    fill={index === 0 ? '#FF6B6B' : 
-                          index === 1 ? '#4ECDC4' : 
-                          index === 2 ? '#FFD166' : 
-                          index === 3 ? '#FC76A1' : 
-                          index === 4 ? '#A685E2' : 
-                          index === 5 ? '#6CACE4' : 
-                          '#95D44A'}
+                    fill={
+                      index === 0
+                        ? '#FF6B6B'
+                        : index === 1
+                        ? '#4ECDC4'
+                        : index === 2
+                        ? '#FFD166'
+                        : index === 3
+                        ? '#FC76A1'
+                        : index === 4
+                        ? '#A685E2'
+                        : index === 5
+                        ? '#6CACE4'
+                        : '#95D44A'
+                    }
                   />
                 ))}
               </Pie>
               <Tooltip />
               <Legend />
             </PieChart>
-            <p className="tw-text-center tw-text-sm tw-text-gray-600">Click on a section to jump to details</p>
+            <p className="tw-text-center tw-text-sm tw-text-gray-600">
+              Click on a section to jump to details
+            </p>
           </div>
         </div>
 
-        {/* Detailed Email Sections */}
+        {/* Detailed sections */}
         <div className="tw-flex tw-flex-col">
           {sections.map((section) => (
-            <SectionWrapper
-              key={section.id}
-              collapse={isCollapsed(section.id)}
-            >
-              {section.id === "drafts" ? (
+            <SectionWrapper key={section.id} collapse={isCollapsed(section.id)}>
+              {section.id === 'drafts' ? (
                 <>
                   <EmailTypeSection
                     id={section.id}
@@ -596,8 +709,19 @@ const BotSummary = () => {
                         className="tw-bg-primary tw-text-white tw-rounded-lg tw-py-2 tw-px-4 tw-flex tw-items-center tw-shadow-button hover:tw-bg-opacity-90 tw-transition-all tw-duration-300"
                         onClick={handleSendAllDrafts}
                       >
-                        <svg xmlns="http://www.w3.org/2000/svg" className="tw-h-5 tw-w-5 tw-mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 10l7-7m0 0l7 7m-7-7v18" />
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          className="tw-h-5 tw-w-5 tw-mr-2"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth="2"
+                            d="M5 10l7-7m0 0l7 7m-7-7v18"
+                          />
                         </svg>
                         Send All Drafts
                       </button>
