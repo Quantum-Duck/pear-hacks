@@ -81,6 +81,7 @@ const EmailTypeSection = ({
   const getEmoji = () => {
     switch (id) {
       case 'drafts': return '✏️';
+      case 'sentEmails': return '📨';
       case 'infoItems': return '📚';
       case 'promotions': return '🎟️';
       case 'actionRequired': return '⚡';
@@ -95,6 +96,7 @@ const EmailTypeSection = ({
   const getBgColor = () => {
     switch (id) {
       case 'drafts': return 'tw-bg-pastel-blue tw-bg-opacity-30';
+      case 'sentEmails': return 'tw-bg-pastel-purple tw-bg-opacity-30';
       case 'infoItems': return 'tw-bg-pastel-green tw-bg-opacity-30';
       case 'promotions': return 'tw-bg-pastel-yellow tw-bg-opacity-30';
       case 'actionRequired': return 'tw-bg-pastel-pink tw-bg-opacity-30';
@@ -173,7 +175,6 @@ const BotSummary = () => {
   const [meetingUpdates, setMeetingUpdates] = useState([]);
   const [others, setOthers] = useState([]);
   const [sentEmails, setSentEmails] = useState([]);
-  const [activeTab, setActiveTab] = useState('drafts');
 
   // activeCategory = null => all sections show only the header.
   // Otherwise, the active section is expanded.
@@ -338,7 +339,7 @@ const BotSummary = () => {
       const name = data.payload.name;
       const categoryIdMap = {
         'Drafts': 'drafts',
-        'Sent Emails': 'drafts',  // Use the same section but switch tab
+        'Sent Emails': 'sentEmails',
         'Info': 'infoItems',
         'Promotions': 'promotions',
         'Action Required': 'actionRequired',
@@ -346,13 +347,6 @@ const BotSummary = () => {
         'Meeting Updates': 'meetingUpdates',
         'Other': 'others',
       };
-      
-      // Set the active tab to Sent Emails if clicked
-      if (name === 'Sent Emails') {
-        setActiveTab('sent');
-      } else if (name === 'Drafts') {
-        setActiveTab('drafts');
-      }
       const sectionId = categoryIdMap[name];
       if (sectionId) {
         const element = document.getElementById(sectionId);
@@ -368,15 +362,28 @@ const BotSummary = () => {
     {
       id: "drafts",
       title: "Drafts",
-      items: activeTab === 'drafts' ? drafts : sentEmails,
-      type: activeTab === 'drafts' ? "draft" : "sent_emails",
+      items: drafts,
+      type: "draft",
       primaryRender: (item) => {
         const subject = item.draft?.replySubject;
         const sender = renderSender(item);
-        return subject ? `${activeTab === 'drafts' ? 'Draft' : 'Sent'}: ${subject} - ${sender}` : sender;
+        return subject ? `Draft: ${subject} - ${sender}` : sender;
       },
       secondaryRender: (item) =>
         item.draft?.draftContent || "No draft content provided",
+    },
+    {
+      id: "sentEmails",
+      title: "Sent Emails",
+      items: sentEmails,
+      type: "sent_emails",
+      primaryRender: (item) => {
+        const subject = item.draft?.replySubject || item.content?.subject;
+        const sender = renderSender(item);
+        return subject ? `Sent: ${subject} - ${sender}` : sender;
+      },
+      secondaryRender: (item) =>
+        item.draft?.draftContent || item.content?.body || "No content provided",
     },
     {
       id: "infoItems",
@@ -569,23 +576,9 @@ const BotSummary = () => {
             >
               {section.id === "drafts" ? (
                 <>
-                  <div className="tw-flex tw-mb-2">
-                    <button
-                      className={`tw-px-4 tw-py-2 tw-rounded-l-lg tw-border ${activeTab === 'drafts' ? 'tw-bg-primary tw-text-white' : 'tw-bg-white tw-text-primary tw-border-primary'} tw-transition-all tw-duration-300`}
-                      onClick={() => setActiveTab('drafts')}
-                    >
-                      Drafts
-                    </button>
-                    <button
-                      className={`tw-px-4 tw-py-2 tw-rounded-r-lg tw-border ${activeTab === 'sent' ? 'tw-bg-primary tw-text-white' : 'tw-bg-white tw-text-primary tw-border-primary'} tw-transition-all tw-duration-300`}
-                      onClick={() => setActiveTab('sent')}
-                    >
-                      Sent Emails
-                    </button>
-                  </div>
                   <EmailTypeSection
                     id={section.id}
-                    title={activeTab === 'drafts' ? "Drafts" : "Sent Emails"}
+                    title={section.title}
                     items={section.items}
                     type={section.type}
                     isActive={isActive(section.id)}
@@ -597,7 +590,7 @@ const BotSummary = () => {
                     handleReadAll={handleReadAll}
                     renderList={renderList}
                   />
-                  {activeTab === 'drafts' && drafts.length > 0 && (
+                  {drafts.length > 0 && isActive(section.id) && (
                     <div className="tw-mt-2 tw-flex tw-justify-center">
                       <button
                         className="tw-bg-primary tw-text-white tw-rounded-lg tw-py-2 tw-px-4 tw-flex tw-items-center tw-shadow-button hover:tw-bg-opacity-90 tw-transition-all tw-duration-300"
